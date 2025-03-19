@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { getToken, getShopId } from '../utils/auth';
 import { generateShopQRCodePDF } from '../utils/pdfGenerator';
 import { io, Socket } from 'socket.io-client';
-import { BASE_URL, STATIC_VARIABLES } from '../config'; // Adjust path if needed
+import { API_ENDPOINTS, BASE_URL, STATIC_VARIABLES } from '../config'; // Adjust path if needed
 
 // Types
 interface PrintJob {
