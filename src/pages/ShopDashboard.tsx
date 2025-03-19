@@ -49,7 +49,7 @@ const QRCodeModal = ({ isOpen, onClose, shop }: { isOpen: boolean; onClose: () =
         <div className="flex flex-col items-center">
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <QRCode
-              value={`https://localhost:5173/upload?shop_id=${shop._id}`}
+              value={`${API_ENDPOINTS}/upload?shop_id=${shop._id}`}
               size={200}
               level="H"
             />
@@ -260,7 +260,7 @@ const ShopDashboard = () => {
 
   const handleToggleUploads = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/shop/${getShopId()}/toggle-uploads`, {
+      const response = await fetch(`${API_ENDPOINTS}/api/shop/${getShopId()}/toggle-uploads`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getToken()}`,

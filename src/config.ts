@@ -1,7 +1,7 @@
 // config.ts
 
 // Base URL for API requests
-export const BASE_URL = 'http://localhost:5000';
+export const BASE_URL = 'http://192.168.29.231:5000';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -27,7 +27,7 @@ export const STATIC_VARIABLES = {
   SOCKET_URL: 'http://localhost:5000', // WebSocket URL
   SOCKET_TRANSPORTS: ['websocket'] as const, // WebSocket transport option
   ACCEPTED_FILE_TYPES: {
-    'application/pdf': ['.pdf'],
+    'application/pdf': ['.pdf'],localhost
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     'application/vnd.ms-excel': ['.xls'],
