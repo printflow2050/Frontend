@@ -260,7 +260,7 @@ const ShopDashboard = () => {
 
   const handleToggleUploads = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/shop/${getShopId()}/toggle-uploads`, {
+      const response = await fetch(`${BASE_FRONTEND_URL}/api/shop/${getShopId()}/toggle-uploads`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getToken()}`,
