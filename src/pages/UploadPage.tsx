@@ -13,7 +13,9 @@ type PrintSide = 'single' | 'double';
 
 const UploadPage = () => {
   const [searchParams] = useSearchParams();
+  console.log(searchParams);
   const shopId = searchParams.get('shop_id');
+  console.log(shopId);
   const [shopName, setShopName] = useState('');
   const [bwCostPerPage, setBwCostPerPage] = useState(0);
   const [colorCostPerPage, setColorCostPerPage] = useState(0);
@@ -294,11 +296,10 @@ const UploadPage = () => {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Status:</span>
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                      jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING
+                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-green-100 text-green-800'
-                    }`}
+                      }`}
                   >
                     {jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING ? (
                       <>
@@ -378,9 +379,8 @@ const UploadPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Upload Document</label>
                     <div
                       {...getRootProps()}
-                      className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
-                        isDragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 hover:border-indigo-600 hover:bg-gray-50'
-                      }`}
+                      className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${isDragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 hover:border-indigo-600 hover:bg-gray-50'
+                        }`}
                     >
                       <input {...getInputProps()} />
                       {file ? (
@@ -417,11 +417,10 @@ const UploadPage = () => {
                             key={option.value}
                             type="button"
                             onClick={() => setPrintType(option.value as PrintType)}
-                            className={`${
-                              printType === option.value
+                            className={`${printType === option.value
                                 ? 'bg-white border-indigo-600 text-indigo-600 ring-2 ring-indigo-600'
                                 : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-600'
-                            } border rounded-xl py-3 px-4 flex items-center justify-center text-sm font-medium transition-all duration-200`}
+                              } border rounded-xl py-3 px-4 flex items-center justify-center text-sm font-medium transition-all duration-200`}
                           >
                             {option.label}
                           </button>
@@ -440,11 +439,10 @@ const UploadPage = () => {
                             key={option.value}
                             type="button"
                             onClick={() => setPrintSide(option.value as PrintSide)}
-                            className={`${
-                              printSide === option.value
+                            className={`${printSide === option.value
                                 ? 'bg-white border-indigo-600 text-indigo-600 ring-2 ring-indigo-600'
                                 : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-600'
-                            } border rounded-xl py-3 px-4 flex items-center justify-center text-sm font-medium transition-all duration-200`}
+                              } border rounded-xl py-3 px-4 flex items-center justify-center text-sm font-medium transition-all duration-200`}
                           >
                             {option.label}
                           </button>
