@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Printer, BarChart2, LogOut, Menu, X, Settings, User } from 'lucide-react';
 import { isAuthenticated, getToken, getShopId, logout } from '../../utils/auth';
 import toast from 'react-hot-toast';
-import { API_ENDPOINTS } from '../../config';
+import { BASE_URL } from '../../config';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -16,7 +16,7 @@ const DashboardLayout = () => {
     } else {
       const fetchShopDetails = async () => {
         try {
-          const response = await fetch(`${API_ENDPOINTS}/api/shop/${getShopId()}`, {
+          const response = await fetch(`${BASE_URL}/api/shop/${getShopId()}`, {
             headers: {
               'Authorization': `Bearer ${getToken()}`,
             },
