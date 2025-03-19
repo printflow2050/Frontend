@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { getToken, getShopId } from '../utils/auth';
 import { generateShopQRCodePDF } from '../utils/pdfGenerator';
 import { io, Socket } from 'socket.io-client';
-import { API_ENDPOINTS, BASE_URL, STATIC_VARIABLES } from '../config'; // Adjust path if needed
+import { API_ENDPOINTS, BASE_FRONTEND_URL, STATIC_VARIABLES } from '../config'; // Adjust path if needed
 
 // Types
 interface PrintJob {
@@ -49,7 +49,7 @@ const QRCodeModal = ({ isOpen, onClose, shop }: { isOpen: boolean; onClose: () =
         <div className="flex flex-col items-center">
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <QRCode
-              value={`${BASE_URL}/upload?shop_id=${shop._id}`}
+              value={`${BASE_FRONTEND_URL}/upload?shop_id=${shop._id}`}
               size={200}
               level="H"
             />
@@ -260,7 +260,7 @@ const ShopDashboard = () => {
 
   const handleToggleUploads = async () => {
     try {
-      const response = await fetch(`${API_ENDPOINTS}/api/shop/${getShopId()}/toggle-uploads`, {
+      const response = await fetch(`${BASE_URL}/api/shop/${getShopId()}/toggle-uploads`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getToken()}`,

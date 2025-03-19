@@ -1,6 +1,7 @@
 // config.ts
 
 // Base URL for API requests
+export const BASE_FRONTEND_URL = 'https://printflow.vercel.app'
 export const BASE_URL = 'https://pritflowbackend-production.up.railway.app';
 
 // API Endpoints
