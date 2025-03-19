@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { Printer, BarChart2, LogOut, Menu, X, Settings, User } from 'lucide-react';
 import { isAuthenticated, getToken, getShopId, logout } from '../../utils/auth';
 import toast from 'react-hot-toast';
-import { API_ENDPOINTS } from '../config';
+import { API_ENDPOINTS } from '../../config';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

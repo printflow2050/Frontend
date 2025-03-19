@@ -1,7 +1,7 @@
 // config.ts
 
 // Base URL for API requests
-export const BASE_URL = 'http://192.168.29.231:5000';
+export const BASE_URL = 'https://pritflowbackend-production.up.railway.app';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -24,10 +24,10 @@ export const STATIC_VARIABLES = {
     EXPIRED: 'expired',
     DELETED: 'deleted',
   } as const,
-  SOCKET_URL: 'http://localhost:5000', // WebSocket URL
+  SOCKET_URL: BASE_URL, // WebSocket URL
   SOCKET_TRANSPORTS: ['websocket'] as const, // WebSocket transport option
   ACCEPTED_FILE_TYPES: {
-    'application/pdf': ['.pdf'],localhost
+    'application/pdf': ['.pdf'],
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     'application/vnd.ms-excel': ['.xls'],
