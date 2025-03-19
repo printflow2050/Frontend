@@ -1,0 +1,21 @@
+{
+    "redirects": [
+      {
+        "source": "/",
+        "has": [
+          {
+            "type": "query",
+            "key": "shop_id"
+          }
+        ],
+        "destination": "/upload",
+        "permanent": false
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  }
