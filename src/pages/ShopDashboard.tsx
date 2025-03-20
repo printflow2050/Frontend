@@ -334,37 +334,39 @@ const ShopDashboard = () => {
   };
 
   const handleDownloadFile = async (filePath: string | null, fileName: string) => {
+    console.log(filePath)
+    console.log(fileName)
     if (!filePath) {
-        toast.error('File has been deleted');
-        return;
+      toast.error('File has been deleted');
+      return;
     }
     try {
-        const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}/${encodeURIComponent(filePath)}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${getToken()}`,
-            },
-        });
+      const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}/${filePath}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+        },
+      });
 
-        if (!response.ok) {
-            throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
-        }
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+      }
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        toast.success('File downloaded successfully');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('File downloaded successfully');
     } catch (error: any) {
-        console.error('Download error:', error);
-        toast.error(`Failed to download file: ${error.message}`);
+      console.error('Download error:', error);
+      toast.error(`Failed to download file: ${error.message}`);
     }
-};
+  };
 
   const formatFileName = (filePath: string | null) => {
     if (!filePath) return 'File Deleted';

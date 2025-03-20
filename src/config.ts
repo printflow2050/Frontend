@@ -9,7 +9,7 @@ export const API_ENDPOINTS = {
   SHOP_DETAILS: `${BASE_URL}/api/shop`, // Base for shop details (append /:shopId)
   PRINT_JOBS: `${BASE_URL}/api/printjobs`, // Base for print jobs (append /prints/:shopId, /:jobId, etc.)
   UPLOAD_FILE: `${BASE_URL}/api/upload`, // Base for file upload (append /:shopId)
-  FILE_DOWNLOAD: `${BASE_URL}/api/upload/download`, // Ensure this is correct
+  FILE_DOWNLOAD: `${BASE_URL}`, // Ensure this is correct
   PRINT_JOB_STATUS: `${BASE_URL}/api/printjobs/status`, // For status check (append /:token)
   SHOP_REGISTER: `${BASE_URL}/api/shop/register`, // For shop registration
   SHOP_LOGIN: `${BASE_URL}/api/shop/login`, // For shop login
