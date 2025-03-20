@@ -339,7 +339,7 @@ const ShopDashboard = () => {
         return;
     }
     try {
-        const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}/${filePath}`, {
+        const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}/${encodeURIComponent(filePath)}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${getToken()}`,
