@@ -37,7 +37,7 @@ const RegisterPage = () => {
         },
         body: JSON.stringify({
           name: shopName,
-          owner_name: ownerName,
+          ownerName: ownerName,
           email,
           phone,
           address,
@@ -55,7 +55,7 @@ const RegisterPage = () => {
 
       // Save authentication data
       localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.TOKEN, data.token);
-      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.SHOP_ID, data.shop._id);
+      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.SHOP_ID, data._id);
 
       toast.success('Registration successful! Welcome to PrintFlow.');
       navigate(STATIC_VARIABLES.LOGIN_REDIRECT_PATH);
