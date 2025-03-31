@@ -129,7 +129,7 @@ export const generateShopQRCodePDF = async (shop: Shop): Promise<void> => {
   doc.text('Powered by PrintFlow - Digital Print Management Solution', width / 2, height - 18, { align: 'center' });
   doc.setFontSize(10);
   doc.setTextColor(52, 120, 255);
-  doc.text('www.printflow.com', width / 2, height - 10, { align: 'center' });
+  doc.text('https://printflow.vercel.app', width / 2, height - 10, { align: 'center' });
 
   // Save the PDF
   doc.save(`${shop.name}_QR_Code.pdf`);

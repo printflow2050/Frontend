@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { JSX } from 'react/jsx-runtime';
-import { Printer, FileText, Check, Trash2, QrCode, Clock, AlertCircle, X, Search } from 'lucide-react';
+import { Printer, FileText, Check, Trash2, QrCode, Clock, AlertCircle, X, Search, Download } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -10,18 +9,21 @@ import { io, Socket } from 'socket.io-client';
 import { API_ENDPOINTS, BASE_FRONTEND_URL, STATIC_VARIABLES } from '../config'; // Adjust path if needed
 
 // Types
+interface PrintJobFile {
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+}
+
 interface PrintJob {
   id: string;
-  fileType: string;
-  printType: 'bw' | 'color';
-  printSide: 'single' | 'double';
-  copies: number;
   token: string;
-  status: 'pending' | 'completed' | 'expired' | 'deleted';
+  printType: string;
+  printSide: string;
+  copies: number;
+  status: string;
   uploadTime: Date;
-  file_path: string | null;
-  fileName?: string;
-  fileSize?: number;
+  files: PrintJobFile[];
 }
 
 // QR Code Modal Component
@@ -97,32 +99,67 @@ const ShopDashboard = () => {
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket server');
+      socket.emit('joinShopRoom', getShopId());
     });
 
-    socket.on('newPrintJob', (newJob: PrintJob) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const uploadDate = new Date(newJob.uploadTime);
-      uploadDate.setHours(0, 0, 0, 0);
+    socket.on('newBatchPrintJob', (newJob: any) => {
+      console.log('Received new batch print job:', newJob);
+      
+      // Ensure the job has the correct structure
+      const formattedJob: PrintJob = {
+        id: newJob.id || newJob._id,
+        token: newJob.token || newJob.token_number,
+        printType: newJob.printType || newJob.print_type,
+        printSide: newJob.printSide || newJob.print_side,
+        copies: newJob.copies || 1,
+        status: newJob.status || 'pending',
+        uploadTime: newJob.uploadTime ? new Date(newJob.uploadTime) : new Date(),
+        files: Array.isArray(newJob.files) ? newJob.files.map((file: any) => ({
+          fileName: file.fileName,
+          filePath: file.filePath || file.file_path,
+          fileSize: file.fileSize || 0
+        })) : []
+      };
+      
+      setPrintJobs(prevJobs => {
+        if (prevJobs.some(job => job.id === formattedJob.id)) return prevJobs;
+        return [formattedJob, ...prevJobs];
+      });
+      
+      toast.success(`New print job received with ${formattedJob.files.length} files!`);
+    });
 
-      if (today.getTime() === uploadDate.getTime()) {
-        setPrintJobs((prevJobs) => {
-          if (prevJobs.some(job => job.id === newJob.id)) return prevJobs;
-          return [...prevJobs, {
-            id: newJob.id,
-            fileType: newJob.fileType || (newJob.fileName ? newJob.fileName.split('.').pop() || 'unknown' : 'unknown'),
-            printType: newJob.printType,
-            printSide: newJob.printSide,
-            copies: newJob.copies,
-            token: newJob.token,
-            status: newJob.status,
-            uploadTime: new Date(newJob.uploadTime),
-            file_path: newJob.file_path,
-            fileName: newJob.fileName,
-            fileSize: newJob.fileSize
-          }];
-        });
-        toast.success('New print job received!');
+    socket.on('jobStatusUpdate', (update: { id: string, status: string }) => {
+      setPrintJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.id === update.id ? { ...job, status: update.status } : job
+        )
+      );
+      
+      // Show a single toast notification
+      if (update.status === 'completed') {
+        toast.success(`Job marked as completed`);
+      } else if (update.status === 'deleted') {
+        toast.success(`Job deleted successfully`);
+      } else {
+        toast.info(`Job status updated to ${update.status}`);
+      }
+    });
+
+    socket.on('batchStatusUpdate', (update: { token: string, status: string }) => {
+      setPrintJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.token === update.token ? { ...job, status: update.status } : job
+        )
+      );
+      
+      // Show a single toast notification
+      if (update.status === 'completed') {
+        toast.success(`Jobs marked as completed`);
+      } else if (update.status === 'deleted') {
+        toast.success(`Jobs deleted successfully`);
+      } else {
+        toast.info(`Jobs status updated to ${update.status}`);
       }
     });
 
@@ -161,39 +198,53 @@ const ShopDashboard = () => {
 
   // Fetch initial print jobs for today
   useEffect(() => {
-    const fetchPrintJobs = async () => {
+    const fetchJobs = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch(`${API_ENDPOINTS.PRINT_JOBS}/prints/${getShopId()}`, {
           headers: {
             'Authorization': `Bearer ${getToken()}`,
           },
         });
+        
         if (!response.ok) {
           throw new Error('Failed to fetch print jobs');
         }
-        const jobs = await response.json();
-        console.log('Initial jobs for today:', jobs);
-        setPrintJobs(Array.isArray(jobs) ? jobs.map(job => ({
+        
+        const data = await response.json();
+        console.log('Initial jobs for today:', data);
+        
+        // Transform the data to match our PrintJob interface
+        const formattedJobs: PrintJob[] = data.map((job: any) => ({
           id: job._id,
-          fileType: job.fileName ? job.fileName.split('.').pop() : 'unknown',
+          token: job.token_number,
           printType: job.print_type,
           printSide: job.print_side,
           copies: job.copies,
-          token: job.token_number,
           status: job.status,
           uploadTime: new Date(job.uploaded_at),
-          file_path: job.file_path,
-          fileName: job.fileName,
-          fileSize: job.fileSize
-        })) : []);
-        setIsLoading(false);
+          files: Array.isArray(job.files) ? job.files.map((file: any) => ({
+            fileName: file.fileName,
+            filePath: file.filePath || file.file_path,
+            fileSize: file.fileSize
+          })) : [{
+            // For backward compatibility with old data structure
+            fileName: job.fileName,
+            filePath: job.file_path,
+            fileSize: job.fileSize
+          }]
+        }));
+        
+        setPrintJobs(formattedJobs);
       } catch (error) {
+        console.error('Error fetching print jobs:', error);
         toast.error('Failed to fetch print jobs');
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPrintJobs();
+    fetchJobs();
   }, []);
 
   const handleMarkAsCompleted = async (jobId: string) => {
@@ -202,60 +253,43 @@ const ShopDashboard = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`,
+          'Authorization': `Bearer ${getToken()}`
         },
-        body: JSON.stringify({ status: STATIC_VARIABLES.STATUS_TYPES.COMPLETED }),
+        body: JSON.stringify({ status: 'completed' })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update print job status');
+        throw new Error('Failed to update job status');
       }
-
-      const updatedJob = await response.json();
-
-      setPrintJobs(prevJobs =>
-        prevJobs.map(job =>
-          job.id === jobId ? {
-            id: updatedJob._id,
-            fileType: updatedJob.fileName ? updatedJob.fileName.split('.').pop() : 'unknown',
-            printType: updatedJob.print_type,
-            printSide: updatedJob.print_side,
-            copies: updatedJob.copies,
-            token: updatedJob.token_number,
-            status: updatedJob.status,
-            uploadTime: new Date(updatedJob.uploaded_at),
-            file_path: updatedJob.file_path,
-            fileName: updatedJob.fileName,
-            fileSize: updatedJob.fileSize
-          } : job
-        )
-      );
-
-      toast.success('Print job marked as completed');
+      
+      toast.success('Job marked as completed');
     } catch (error) {
-      console.error('Error updating job:', error);
-      toast.error('Failed to update print job status');
+      console.error('Error marking job as completed:', error);
+      toast.error('Failed to mark job as completed');
     }
   };
 
   const handleDeleteJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_ENDPOINTS.PRINT_JOBS}/${jobId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${getToken()}`,
-        },
+          'Authorization': `Bearer ${getToken()}`
+        }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete print job');
+        throw new Error('Failed to delete job');
       }
-
-      setPrintJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
-      toast.success('Print job file deleted successfully');
+      
+      toast.success('Job deleted successfully');
     } catch (error) {
       console.error('Error deleting job:', error);
-      toast.error('Failed to delete print job');
+      toast.error('Failed to delete job');
     }
   };
 
@@ -287,69 +321,82 @@ const ShopDashboard = () => {
     job.token.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getUploadTimeDisplay = (date: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} minutes ago`;
-    } else if (diffInMinutes < 24 * 60) {
-      const hours = Math.floor(diffInMinutes / 60);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    } else {
-      return format(date, STATIC_VARIABLES.DATE_FORMAT);
+  const getUploadTimeDisplay = (date: Date | string | undefined): string => {
+    if (!date) return 'Unknown time';
+    
+    // Convert string to Date if needed
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    try {
+      // Format the date
+      return format(dateObj, 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting date:', error, date);
+      return 'Invalid date';
     }
   };
 
-  const getFileIcon = (fileType: string) => {
-    return <FileText className="h-5 w-5 text-gray-500" />;
+  const getFileIcon = (fileType: string | undefined) => {
+    if (!fileType) return <FileText className="h-8 w-8 text-gray-400" />;
+    
+    // Return appropriate icon based on file type
+    return <FileText className="h-8 w-8 text-indigo-500" />;
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case STATIC_VARIABLES.STATUS_TYPES.PENDING:
+      case 'pending':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <Clock className="h-3 w-3 mr-1" />
+            <Clock className="mr-1 h-3 w-3" />
             Pending
           </span>
         );
-      case STATIC_VARIABLES.STATUS_TYPES.COMPLETED:
+      case 'completed':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <Check className="h-3 w-3 mr-1" />
+            <Check className="mr-1 h-3 w-3" />
             Completed
           </span>
         );
-      case STATIC_VARIABLES.STATUS_TYPES.EXPIRED:
+      case 'expired':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            <AlertCircle className="h-3 w-3 mr-1" />
+            <AlertCircle className="mr-1 h-3 w-3" />
             Expired
           </span>
         );
+      case 'deleted':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <Trash2 className="mr-1 h-3 w-3" />
+            Deleted
+          </span>
+        );
       default:
-        return null;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
     }
   };
 
-  const handleDownloadFile = async (filePath: string | null, fileName: string) => {
-    console.log(filePath)
-    console.log(fileName)
+  const handleDownloadFile = async (filePath: string, fileName: string) => {
     if (!filePath) {
-      toast.error('File has been deleted');
+      toast.error('File is not available for download');
       return;
     }
+    
     try {
-      const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}/${filePath}`, {
-        method: 'GET',
+      const response = await fetch(`${API_ENDPOINTS.FILE_DOWNLOAD}?path=${encodeURIComponent(filePath)}`, {
         headers: {
-          'Authorization': `Bearer ${getToken()}`,
-        },
+          'Authorization': `Bearer ${getToken()}`
+        }
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+        throw new Error('Failed to download file');
       }
 
       const blob = await response.blob();
@@ -361,10 +408,13 @@ const ShopDashboard = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success('File downloaded successfully');
+      
+      // Only show toast for individual file downloads
+      if (fileName) {
+        toast.success(`Downloaded: ${fileName}`);
+      }
     } catch (error: any) {
-      console.error('Download error:', error);
-      toast.error(`Failed to download file: ${error.message}`);
+      toast.error(`Download failed: ${error.message}`);
     }
   };
 
@@ -372,6 +422,58 @@ const ShopDashboard = () => {
     if (!filePath) return 'File Deleted';
     const fileName = filePath.split(/[/\\]/).pop() || '';
     return fileName.replace(/^\d+-/, '');
+  };
+
+  const handleDownloadFiles = async (jobId: string) => {
+    const toastId = toast.loading('Preparing download...');
+    
+    try {
+      const job = printJobs.find(job => job.id === jobId);
+      if (!job) {
+        toast.error('Job not found', { id: toastId });
+        return;
+      }
+
+      // For direct download with authentication
+      const token = getToken();
+      const response = await fetch(`${API_ENDPOINTS.PRINT_JOB_BATCH_DOWNLOAD}/${job.token}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download files');
+      }
+
+      // Get the filename from the Content-Disposition header if available
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `printjob-${job.token}`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Download complete', { id: toastId });
+    } catch (error: any) {
+      console.error('Error downloading files:', error);
+      toast.error(`Download failed: ${error.message}`, { id: toastId });
+    }
   };
 
   return (
@@ -558,11 +660,11 @@ const ShopDashboard = () => {
                         <div className="px-6 py-5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center max-w-2xl">
-                              <div className="flex-shrink-0">{getFileIcon(job.fileType)}</div>
+                              <div className="flex-shrink-0">{getFileIcon(job.printType)}</div>
                               <div className="ml-4">
                                 <div className="flex items-center">
                                   <h4 className="text-sm font-medium text-gray-900 truncate max-w-xs">
-                                    {job.fileName || formatFileName(job.file_path)}
+                                    {job.files.map(file => file.fileName).join(', ')}
                                   </h4>
                                   <span className="ml-2 flex-shrink-0">{getStatusBadge(job.status)}</span>
                                 </div>
@@ -580,12 +682,6 @@ const ShopDashboard = () => {
                                   <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700">
                                     {job.copies} {job.copies === 1 ? 'copy' : 'copies'}
                                   </span>
-                                  {/* Add file size badge */}
-                                  {job.fileSize && (
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
-                                      {(job.fileSize / (1024 * 1024)).toFixed(1)} MB
-                                    </span>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -613,11 +709,11 @@ const ShopDashboard = () => {
                                 Delete
                               </button>
                               <button
-                                onClick={() => handleDownloadFile(job.file_path, job.fileName || formatFileName(job.file_path))}
+                                onClick={() => handleDownloadFiles(job.id)}
                                 className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                               >
-                                <FileText className="h-3.5 w-3.5 mr-1" />
-                                Download
+                                <Download className="h-3.5 w-3.5 mr-1" />
+                                Download All
                               </button>
                             </div>
                           )}

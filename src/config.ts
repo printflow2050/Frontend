@@ -1,18 +1,23 @@
 // config.ts
-
-// Base URL for API requests
-export const BASE_FRONTEND_URL = 'https://printflow.vercel.app'
-export const BASE_URL = 'https://pritflowbackend-production.up.railway.app';
+export const BASE_FRONTEND_URL = 'http://localhost:5173';
+export const BASE_URL = 'http://localhost:5000';
+// For production:
+// export const BASE_FRONTEND_URL = 'https://printflow.vercel.app';
+// export const BASE_URL = 'https://pritflowbackend-production.up.railway.app';
 
 // API Endpoints
 export const API_ENDPOINTS = {
-  SHOP_DETAILS: `${BASE_URL}/api/shop`, // Base for shop details (append /:shopId)
-  PRINT_JOBS: `${BASE_URL}/api/printjobs`, // Base for print jobs (append /prints/:shopId, /:jobId, etc.)
-  UPLOAD_FILE: `${BASE_URL}/api/upload`, // Base for file upload (append /:shopId)
-  FILE_DOWNLOAD: `${BASE_URL}`, // Ensure this is correct
-  PRINT_JOB_STATUS: `${BASE_URL}/api/printjobs/status`, // For status check (append /:token)
-  SHOP_REGISTER: `${BASE_URL}/api/shop/register`, // For shop registration
-  SHOP_LOGIN: `${BASE_URL}/api/shop/login`, // For shop login
+  BASE_URL: BASE_URL,
+  SHOP_DETAILS: `${BASE_URL}/api/shop`,
+  PRINT_JOBS: `${BASE_URL}/api/printjobs`,
+  UPLOAD_FILE: `${BASE_URL}/api/upload`,
+  FILE_DOWNLOAD: `${BASE_URL}`,
+  PRINT_JOB_BATCH_DOWNLOAD: `${BASE_URL}/api/printjobs/download-batch`,
+  PRINT_JOB_BATCH_DELETE: `${BASE_URL}/api/printjobs/delete-batch`,
+  PRINT_JOB_BATCH_STATUS: `${BASE_URL}/api/printjobs/status-batch`,
+  PRINT_JOB_STATUS: `${BASE_URL}/api/printjobs/status`,
+  SHOP_REGISTER: `${BASE_URL}/api/shop/register`,
+  SHOP_LOGIN: `${BASE_URL}/api/shop/login`,
 } as const;
 
 // Static Variables
@@ -73,7 +78,7 @@ export const STATIC_VARIABLES = {
       {
         TITLE: 'QR Code Upload',
         DESCRIPTION:
-          'Customers scan your shop’s unique QR code to instantly upload files from their phone or tablet.',
+          'Customers scan your shop\'s unique QR code to instantly upload files from their phone or tablet.',
       },
       {
         TITLE: 'Print Job Dashboard',

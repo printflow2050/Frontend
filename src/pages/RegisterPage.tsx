@@ -1,32 +1,29 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Printer, ArrowLeft, Mail, Lock, User, Building, Phone, MapPin } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { User, Mail, Lock, Building, AlertCircle, Phone, MapPin } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import Logo from '../components/Logo';
 import { API_ENDPOINTS, STATIC_VARIABLES } from '../config';
 
 const RegisterPage = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    shopName: '',
-    ownerName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    address: '',
-    phone: '',
-  });
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+    // Validation
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -39,116 +36,102 @@ const RegisterPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.shopName,
-          ownerName: formData.ownerName,
-          email: formData.email,
-          password: formData.password,
-          address: formData.address,
-          phone: formData.phone,
-          bw_cost_per_page: STATIC_VARIABLES.DEFAULT_BW_COST_PER_PAGE, // From config
-          color_cost_per_page: STATIC_VARIABLES.DEFAULT_COLOR_COST_PER_PAGE, // From config
+          name: shopName,
+          owner_name: ownerName,
+          email,
+          phone,
+          address,
+          password,
+          bw_cost_per_page: STATIC_VARIABLES.DEFAULT_BW_COST_PER_PAGE,
+          color_cost_per_page: STATIC_VARIABLES.DEFAULT_COLOR_COST_PER_PAGE,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to register shop');
+        throw new Error(data.error || 'Registration failed');
       }
 
-      const shop = await response.json();
-      console.log(shop);
+      // Save authentication data
+      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.TOKEN, data.token);
+      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.SHOP_ID, data.shop._id);
 
-      toast.success('Registration successful!');
-      navigate('/login');
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
+      toast.success('Registration successful! Welcome to PrintFlow.');
+      navigate(STATIC_VARIABLES.LOGIN_REDIRECT_PATH);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
-        <div className="absolute bottom-10 right-10 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
-        <div className="absolute top-1/3 right-1/4 w-40 h-40 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-      </div>
-
-      <div className="absolute top-4 left-4 z-20">
-        <Link
-          to="/"
-          className="group flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm hover:bg-white transition-all duration-200"
-        >
-          <ArrowLeft className="h-4 w-4 text-gray-600 group-hover:-translate-x-1 transition-transform duration-200" />
-          <span className="text-sm font-medium text-gray-600">Back to home</span>
-        </Link>
-      </div>
-
-      <div className="sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="flex justify-center items-center">
-          <div className="flex items-center">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-2 rounded-lg">
-              <Printer className="h-8 w-8 text-white" />
-            </div>
-            <span className="ml-3 text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-              PrintFlow
-            </span>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <Logo size="lg" />
         </div>
-
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Register your Xerox shop
-        </h2>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Register your shop</h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 transition duration-200">
-            Sign in
+          Or{' '}
+          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+            sign in to your existing account
           </Link>
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-xl sm:px-10 border border-gray-100">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-lg sm:px-10 border border-gray-100">
+          {error && (
+            <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="shopName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="shop-name" className="block text-sm font-medium text-gray-700">
                 Shop Name
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Building className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="shopName"
-                  name="shopName"
+                  id="shop-name"
+                  name="shop-name"
                   type="text"
                   required
-                  value={formData.shopName}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="Your Shop Name"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="e.g. City Xerox Center"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="ownerName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="owner-name" className="block text-sm font-medium text-gray-700">
                 Owner Name
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="ownerName"
-                  name="ownerName"
+                  id="owner-name"
+                  name="owner-name"
                   type="text"
                   required
-                  value={formData.ownerName}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="Your Full Name"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Your full name"
                 />
               </div>
             </div>
@@ -157,7 +140,7 @@ const RegisterPage = () => {
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
@@ -167,10 +150,10 @@ const RegisterPage = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="shop@example.com"
                 />
               </div>
             </div>
@@ -179,7 +162,7 @@ const RegisterPage = () => {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                 Phone Number
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-5 w-5 text-gray-400" />
                 </div>
@@ -188,10 +171,10 @@ const RegisterPage = () => {
                   name="phone"
                   type="tel"
                   required
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="Your Phone Number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Your phone number"
                 />
               </div>
             </div>
@@ -200,7 +183,7 @@ const RegisterPage = () => {
               <label htmlFor="address" className="block text-sm font-medium text-gray-700">
                 Shop Address
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <MapPin className="h-5 w-5 text-gray-400" />
                 </div>
@@ -209,10 +192,10 @@ const RegisterPage = () => {
                   name="address"
                   type="text"
                   required
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="Shop Address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Shop address"
                 />
               </div>
             </div>
@@ -221,7 +204,7 @@ const RegisterPage = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
@@ -230,57 +213,87 @@ const RegisterPage = () => {
                   name="password"
                   type="password"
                   required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="••••••••"
+                  minLength={6}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Password must be at least 6 characters long</p>
+            </div>
+
+            <div>
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="confirm-password"
+                  name="confirm-password"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
+            <div className="flex items-center">
+              <input
+                id="terms"
+                name="terms"
+                type="checkbox"
+                required
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+                I agree to the{' '}
+                <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                  Privacy Policy
+                </a>
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-200"
-                  placeholder="••••••••"
-                />
-              </div>
             </div>
 
             <div>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 transform hover:-translate-y-1"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                {isLoading ? 'Registering...' : 'Register Shop'}
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Creating account...
+                  </div>
+                ) : (
+                  'Create account'
+                )}
               </button>
             </div>
           </form>
         </div>
-      </div>
-
-      <div className="mt-8 text-center text-xs text-gray-500 z-10">
-        By registering, you agree to our{' '}
-        <a href="#" className="text-indigo-600 hover:text-indigo-500">
-          Terms of Service
-        </a>{' '}
-        and{' '}
-        <a href="#" className="text-indigo-600 hover:text-indigo-500">
-          Privacy Policy
-        </a>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Upload, FileText, Check, Printer, Clock, AlertCircle, Store, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Check, Printer, Clock, AlertCircle, Store, RefreshCw, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client';
 import { CSSTransition } from 'react-transition-group';
@@ -21,14 +21,14 @@ const UploadPage = () => {
   const [colorCostPerPage, setColorCostPerPage] = useState(0);
   const [isShopClosed, setIsShopClosed] = useState(true);
 
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [printType, setPrintType] = useState<PrintType>('bw');
   const [printSide, setPrintSide] = useState<PrintSide>('single');
   const [copies, setCopies] = useState<number>(STATIC_VARIABLES.MIN_COPIES);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [token, setToken] = useState<string>('');
-  const [jobStatus, setJobStatus] = useState<'pending' | 'completed' | 'expired'>(
+  const [jobStatus, setJobStatus] = useState<'pending' | 'completed' | 'expired' | 'deleted'>(
     STATIC_VARIABLES.STATUS_TYPES.PENDING
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -73,7 +73,7 @@ const UploadPage = () => {
           setToken(storedToken);
           setJobStatus(job.status);
           setUploadComplete(true);
-          setFile({ name: job.fileName } as File);
+          setFiles([{ name: job.fileName } as File]);
           setPrintType(job.print_type);
           setPrintSide(job.print_side);
           setCopies(job.copies);
@@ -108,11 +108,34 @@ const UploadPage = () => {
       setIsShopClosed(!data.isAcceptingUploads);
     });
 
-    socket.on('jobStatusUpdate', (updatedJob) => {
-      console.log('Received jobStatusUpdate:', updatedJob);
+    // Listen for updates specific to THIS token
+    socket.on('jobStatusUpdate', (updatedJob: { id: string; token: string; status: string }) => {
+      console.log('UploadPage received jobStatusUpdate:', updatedJob);
+      // Check if the update is for the token currently displayed on this page
       if (updatedJob.token === token) {
+        console.log(`Updating status for token ${token} to ${updatedJob.status}`);
         setJobStatus(updatedJob.status);
+        // Optional: Show a toast notification
+        if (updatedJob.status === 'completed') {
+            toast.success(`Job #${token} is completed!`);
+        } else if (updatedJob.status === 'deleted') {
+            toast.error(`Job #${token} was declined/deleted.`);
+        }
       }
+    });
+
+    // Listen for BATCH updates as well, in case the shop owner acts on the whole batch
+    socket.on('batchStatusUpdate', (update: { token: string; status: string; count: number }) => {
+        console.log('UploadPage received batchStatusUpdate:', update);
+        if (update.token === token) {
+             console.log(`Updating status for token ${token} (via batch) to ${update.status}`);
+            setJobStatus(update.status);
+             if (update.status === 'completed') {
+                toast.success(`All jobs for #${token} completed!`);
+            } else if (update.status === 'deleted') {
+                toast.error(`All jobs for #${token} were declined/deleted.`);
+            }
+        }
     });
 
     socket.on('connect_error', (error) => {
@@ -127,51 +150,69 @@ const UploadPage = () => {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      setFile(acceptedFiles[0]);
+      setFiles(acceptedFiles);
     }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: STATIC_VARIABLES.ACCEPTED_FILE_TYPES,
-    maxFiles: 1,
+    multiple: true,
+    maxSize: STATIC_VARIABLES.MAX_FILE_SIZE_MB * 1024 * 1024
   });
+
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!file) {
-      toast.error('Please select a file to upload');
+    if (files.length === 0) {
+      toast.error('Please select at least one file to upload');
       return;
     }
 
     setIsUploading(true);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('print_type', printType);
-    formData.append('print_side', printSide);
-    formData.append('copies', copies.toString());
-
     try {
-      const response = await fetch(`${API_ENDPOINTS.UPLOAD_FILE}/${shopId}`, {
+      const formData = new FormData();
+
+      files.forEach((file) => {
+        console.log(`Appending file: ${file.name} to field 'files'`);
+        formData.append('files', file);
+      });
+
+      formData.append('print_type', printType);
+      formData.append('print_side', printSide);
+      formData.append('copies', copies.toString());
+
+      const uploadEndpoint = `${API_ENDPOINTS.UPLOAD_FILE}/${shopId}`;
+      console.log(`Attempting upload to: ${uploadEndpoint}`);
+
+      const response = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        console.error('Upload error response:', errorText);
+        throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Upload success response:', data);
+      
       const newToken = data.token_number;
       setToken(newToken);
       localStorage.setItem(`uploadToken_${shopId}`, newToken);
       setUploadComplete(true);
       setJobStatus(STATIC_VARIABLES.STATUS_TYPES.PENDING);
-      toast.success('File uploaded successfully!');
+      toast.success(`${files.length} ${files.length === 1 ? 'file' : 'files'} uploaded successfully!`);
     } catch (error) {
-      toast.error('Upload failed. Please try again.');
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -256,7 +297,7 @@ const UploadPage = () => {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Upload Successful!</h2>
               <p className="text-gray-600 text-center mb-6">
-                Your file has been uploaded successfully to{' '}
+                Your files have been uploaded successfully to{' '}
                 <span className="font-medium text-indigo-600">{shopName}</span>
               </p>
 
@@ -272,14 +313,26 @@ const UploadPage = () => {
 
               <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">File Name:</span>
-                  <span className="font-medium text-gray-900">{file?.name}</span>
+                  <span className="text-gray-500">Files Uploaded:</span>
+                  <span className="font-medium text-gray-900">{files.length}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+
+                {files.length > 0 && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <h4 className="text-xs font-medium text-gray-500 mb-1">Filenames:</h4>
+                    <ul className="list-disc list-inside space-y-1 max-h-32 overflow-y-auto">
+                      {files.map((file, index) => (
+                        <li key={index} className="text-xs text-gray-700 truncate" title={file.name}>
+                          {file.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
                   <span className="text-gray-500">Print Type:</span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
-                    {printType === 'bw' ? 'Black & White' : 'Color'}
-                  </span>
+                  <span className="font-medium text-gray-900">{printType === 'bw' ? 'B&W' : 'Color'}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Print Side:</span>
@@ -295,21 +348,31 @@ const UploadPage = () => {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Status:</span>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
-                      }`}
-                  >
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING ? 'bg-yellow-100 text-yellow-800' :
+                      jobStatus === STATIC_VARIABLES.STATUS_TYPES.COMPLETED ? 'bg-green-100 text-green-800' :
+                      jobStatus === 'deleted' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800' // Expired or other
+                    }`}>
                     {jobStatus === STATIC_VARIABLES.STATUS_TYPES.PENDING ? (
                       <>
                         <Clock className="h-3 w-3 mr-1" />
                         Pending
                       </>
-                    ) : (
+                    ) : jobStatus === STATIC_VARIABLES.STATUS_TYPES.COMPLETED ? (
                       <>
                         <Check className="h-3 w-3 mr-1" />
                         Completed
+                      </>
+                    ) : jobStatus === 'deleted' ? (
+                      <>
+                        <X className="h-3 w-3 mr-1" />
+                        Declined
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Expired
                       </>
                     )}
                   </span>
@@ -318,26 +381,36 @@ const UploadPage = () => {
 
               <button
                 onClick={() => {
-                  if (jobStatus === STATIC_VARIABLES.STATUS_TYPES.COMPLETED) {
-                    setFile(null);
+                  if (jobStatus === STATIC_VARIABLES.STATUS_TYPES.COMPLETED || jobStatus === 'deleted') {
+                    // First set a transitioning state to trigger animation
+                    const transitionOut = () => {
+                      // After animation completes, reset all state variables
+                      setFiles([]);
+                      setPrintType('bw');
+                      setPrintSide('single');
+                      setCopies(STATIC_VARIABLES.MIN_COPIES);
+                      setIsUploading(false);
+                      setUploadComplete(false);
+                      setToken('');
+                      localStorage.removeItem(`uploadToken_${shopId}`);
+                    };
+                    
+                    // Start the transition
                     setUploadComplete(false);
-                    setToken('');
-                    localStorage.removeItem(`uploadToken_${shopId}`);
+                    
+                    // Use setTimeout to ensure the transition has time to complete
+                    setTimeout(transitionOut, 300);
                   } else {
-                    toast.error(
+                    // Show toast for pending jobs
+                    toast.info(
                       <div className="flex items-center space-x-2">
-                        <span>Current job </span>
+                        <span>Your job </span>
                         <span className="font-bold text-yellow-500">#{token}</span>
                         <span>is still pending</span>
                       </div>,
                       {
                         duration: 3000,
                         icon: '⏳',
-                        style: {
-                          background: '#1F2937',
-                          color: '#F3F4F6',
-                          padding: '16px',
-                        },
                       }
                     );
                   }
@@ -363,7 +436,7 @@ const UploadPage = () => {
             </span>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Upload File for Printing
+            Upload Files for Printing
           </h2>
           {shopName && (
             <p className="mt-2 text-center text-sm text-gray-600">
@@ -376,34 +449,60 @@ const UploadPage = () => {
               <div className="py-8 px-4 sm:px-10">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Document</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Documents</label>
                     <div
                       {...getRootProps()}
-                      className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${isDragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 hover:border-indigo-600 hover:bg-gray-50'
-                        }`}
+                      className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
+                        isDragActive ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300 hover:border-indigo-600 hover:bg-gray-50'
+                      }`}
                     >
                       <input {...getInputProps()} />
-                      {file ? (
-                        <div className="flex flex-col items-center">
-                          <FileText className="h-8 w-8 text-primary mb-2" />
-                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                          <p className="text-sm font-medium text-gray-900">
-                            Drag & drop a file here, or click to select
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Supports PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max {STATIC_VARIABLES.MAX_FILE_SIZE_MB}MB)
-                          </p>
-                        </div>
-                      )}
+                      <div className="flex flex-col items-center">
+                        <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm font-medium text-gray-900">
+                          Drag & drop files here, or click to select
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Supports PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max {STATIC_VARIABLES.MAX_FILE_SIZE_MB}MB each)
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  {files.length > 0 && (
+                    <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-sm font-medium text-gray-700">Selected Files ({files.length})</h3>
+                        <button 
+                          type="button"
+                          onClick={() => setFiles([])}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Remove All
+                        </button>
+                      </div>
+                      <ul className="divide-y divide-gray-200">
+                        {files.map((file, index) => (
+                          <li key={index} className="py-2 flex justify-between items-center">
+                            <div className="flex items-center">
+                              <FileText className="h-4 w-4 text-gray-400 mr-2" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 truncate max-w-[200px]">{file.name}</p>
+                                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-xl space-y-6">
                     <div>
@@ -484,7 +583,7 @@ const UploadPage = () => {
 
                   <button
                     type="submit"
-                    disabled={!file || isUploading}
+                    disabled={files.length === 0 || isUploading}
                     className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   >
                     {isUploading ? (
@@ -505,7 +604,7 @@ const UploadPage = () => {
                         Uploading...
                       </div>
                     ) : (
-                      'Upload for Printing'
+                      `Upload ${files.length > 0 ? `${files.length} ${files.length === 1 ? 'File' : 'Files'}` : 'Files'} for Printing`
                     )}
                   </button>
                 </form>
