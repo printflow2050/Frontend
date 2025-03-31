@@ -52,11 +52,7 @@ const QRCodeModal = ({ isOpen, onClose, shop }: { isOpen: boolean; onClose: () =
         <div className="flex flex-col items-center">
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <QRCode
-              value={
-                /Android/i.test(navigator.userAgent)
-                  ? `intent://${BASE_FRONTEND_URL}/upload?shop_id=${shop._id}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${BASE_FRONTEND_URL}/upload?shop_id=${shop._id};end`
-                  : `${BASE_FRONTEND_URL}/upload?shop_id=${shop._id}`
-              }
+              value={`${BASE_FRONTEND_URL}/upload?shop_id=${shop._id}`}
               size={200}
               level="H"
             />
