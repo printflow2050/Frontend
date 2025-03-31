@@ -140,7 +140,13 @@ const UploadPage = () => {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      setFiles(acceptedFiles);
+      setFiles((prevFiles) => {
+        // Filter out duplicate files based on their name
+        const uniqueFiles = acceptedFiles.filter(
+          (newFile) => !prevFiles.some((file) => file.name === newFile.name)
+        );
+        return [...prevFiles, ...uniqueFiles];
+      });
     }
   }, []);
 
