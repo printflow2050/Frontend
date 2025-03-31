@@ -53,12 +53,8 @@ const RegisterPage = () => {
         throw new Error(data.error || 'Registration failed');
       }
 
-      // Save authentication data
-      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.TOKEN, data.token);
-      localStorage.setItem(STATIC_VARIABLES.LOCAL_STORAGE_KEYS.SHOP_ID, data._id);
-
-      toast.success('Registration successful! Welcome to PrintFlow.');
-      navigate(STATIC_VARIABLES.LOGIN_REDIRECT_PATH);
+      toast.success('Registration successful! Please log in to continue.');
+      navigate('/login'); // Redirect to the login page after successful registration
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message);
