@@ -106,7 +106,7 @@ export const generateShopQRCodePDF = async (shop: Shop): Promise<void> => {
   doc.text('How to upload your files:', 20, 190);
 
   const instructions = [
-    '1. Scan the QR code with your smartphone',
+    '1. Scan the QR code with your smartphone using Google Lens or payment apps like GPay/PhonePe',
     '2. Select your document to upload',
     '3. Choose print preferences (B/W or Color)',
     '4. Submit your print job',
