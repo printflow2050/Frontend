@@ -13,9 +13,7 @@ type PrintSide = 'single' | 'double';
 
 const UploadPage = () => {
   const [searchParams] = useSearchParams();
-  console.log(searchParams);
   const shopId = searchParams.get('shop_id');
-  console.log(shopId);
   const [shopName, setShopName] = useState('');
   const [bwCostPerPage, setBwCostPerPage] = useState(0);
   const [colorCostPerPage, setColorCostPerPage] = useState(0);
@@ -40,7 +38,6 @@ const UploadPage = () => {
     const fetchShopDetails = async () => {
       if (shopId) {
         try {
-          console.log(shopId);
           const response = await fetch(`${API_ENDPOINTS.SHOP_DETAILS}/${shopId}`);
           if (!response.ok) {
             throw new Error('Failed to fetch shop details');
@@ -78,7 +75,6 @@ const UploadPage = () => {
           setPrintSide(job.print_side);
           setCopies(job.copies);
         } catch (error) {
-          console.error('Error fetching job status:', error);
           localStorage.removeItem(`uploadToken_${shopId}`);
         }
       }
@@ -95,7 +91,6 @@ const UploadPage = () => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('UploadPage WebSocket connected:', socket.id);
       // Join shop-specific room when connected
       if (shopId) {
         socket.emit('joinShopRoom', shopId);
@@ -104,42 +99,37 @@ const UploadPage = () => {
 
     // Listen for shop status updates
     socket.on('shopStatusUpdate', (data: { isAcceptingUploads: boolean }) => {
-      console.log('Received shop status update:', data);
       setIsShopClosed(!data.isAcceptingUploads);
     });
 
     // Listen for updates specific to THIS token
     socket.on('jobStatusUpdate', (updatedJob: { id: string; token: string; status: string }) => {
-      console.log('UploadPage received jobStatusUpdate:', updatedJob);
       // Check if the update is for the token currently displayed on this page
       if (updatedJob.token === token) {
-        console.log(`Updating status for token ${token} to ${updatedJob.status}`);
         setJobStatus(updatedJob.status);
         // Optional: Show a toast notification
         if (updatedJob.status === 'completed') {
-            toast.success(`Job #${token} is completed!`);
+          toast.success(`Job #${token} is completed!`);
         } else if (updatedJob.status === 'deleted') {
-            toast.error(`Job #${token} was declined/deleted.`);
+          toast.error(`Job #${token} was declined/deleted.`);
         }
       }
     });
 
     // Listen for BATCH updates as well, in case the shop owner acts on the whole batch
     socket.on('batchStatusUpdate', (update: { token: string; status: string; count: number }) => {
-        console.log('UploadPage received batchStatusUpdate:', update);
-        if (update.token === token) {
-             console.log(`Updating status for token ${token} (via batch) to ${update.status}`);
-            setJobStatus(update.status);
-             if (update.status === 'completed') {
-                toast.success(`All jobs for #${token} completed!`);
-            } else if (update.status === 'deleted') {
-                toast.error(`All jobs for #${token} were declined/deleted.`);
-            }
+      if (update.token === token) {
+        setJobStatus(update.status);
+        if (update.status === 'completed') {
+          toast.success(`All jobs for #${token} completed!`);
+        } else if (update.status === 'deleted') {
+          toast.error(`All jobs for #${token} were declined/deleted.`);
         }
+      }
     });
 
     socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      toast.error('WebSocket connection error');
     });
 
     return () => {
@@ -158,7 +148,7 @@ const UploadPage = () => {
     onDrop,
     accept: STATIC_VARIABLES.ACCEPTED_FILE_TYPES,
     multiple: true,
-    maxSize: STATIC_VARIABLES.MAX_FILE_SIZE_MB * 1024 * 1024
+    maxSize: STATIC_VARIABLES.MAX_FILE_SIZE_MB * 1024 * 1024,
   });
 
   const removeFile = (index: number) => {
@@ -179,7 +169,6 @@ const UploadPage = () => {
       const formData = new FormData();
 
       files.forEach((file) => {
-        console.log(`Appending file: ${file.name} to field 'files'`);
         formData.append('files', file);
       });
 
@@ -188,7 +177,6 @@ const UploadPage = () => {
       formData.append('copies', copies.toString());
 
       const uploadEndpoint = `${API_ENDPOINTS.UPLOAD_FILE}/${shopId}`;
-      console.log(`Attempting upload to: ${uploadEndpoint}`);
 
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
@@ -197,13 +185,11 @@ const UploadPage = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Upload error response:', errorText);
         throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Upload success response:', data);
-      
+
       const newToken = data.token_number;
       setToken(newToken);
       localStorage.setItem(`uploadToken_${shopId}`, newToken);
@@ -211,7 +197,6 @@ const UploadPage = () => {
       setJobStatus(STATIC_VARIABLES.STATUS_TYPES.PENDING);
       toast.success(`${files.length} ${files.length === 1 ? 'file' : 'files'} uploaded successfully!`);
     } catch (error) {
-      console.error('Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);

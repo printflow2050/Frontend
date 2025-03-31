@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Printer, QrCode, BarChart2, Clock, Shield, FileText, Zap, Users } from 'lucide-react';
+import { Printer, QrCode, BarChart2, Clock, Shield, FileText, Zap, Users, Menu, X } from 'lucide-react';
 import { isAuthenticated } from '../utils/auth';
 import { STATIC_VARIABLES } from '../config';
 
 const LandingPage = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // State to toggle the menu
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen); // Toggle the menu state
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header - Fixed position */}
@@ -27,12 +34,6 @@ const LandingPage = () => {
                   >
                     Go to Dashboard
                   </Link>
-                  {/* <Link
-                    to={STATIC_VARIABLES.PATHS.ANALYTICS}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-md"
-                  >
-                    View Analytics
-                  </Link> */}
                 </>
               ) : (
                 <>
@@ -52,11 +53,53 @@ const LandingPage = () => {
               )}
             </div>
             <div className="md:hidden">
-              {/* Mobile menu button would go here */}
-              <button className="text-gray-700">Menu</button>
+              {/* Mobile menu button */}
+              <button
+                className="text-gray-700 focus:outline-none"
+                onClick={toggleMenu}
+                aria-label="Toggle Menu"
+              >
+                {isMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden bg-white shadow-md">
+            <div className="px-4 py-6 space-y-4">
+              {isAuthenticated() ? (
+                <>
+                  <Link
+                    to={STATIC_VARIABLES.PATHS.DASHBOARD}
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                    onClick={toggleMenu} // Close menu on click
+                  >
+                    Go to Dashboard
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to={STATIC_VARIABLES.PATHS.LOGIN}
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                    onClick={toggleMenu} // Close menu on click
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to={STATIC_VARIABLES.PATHS.REGISTER}
+                    className="block bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-md"
+                    onClick={toggleMenu} // Close menu on click
+                  >
+                    Get Started Free
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main content wrapper with padding-top to account for fixed header */}

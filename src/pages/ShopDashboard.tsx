@@ -98,13 +98,10 @@ const ShopDashboard = () => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('Connected to WebSocket server');
       socket.emit('joinShopRoom', getShopId());
     });
 
     socket.on('newBatchPrintJob', (newJob: any) => {
-      console.log('Received new batch print job:', newJob);
-      
       // Ensure the job has the correct structure
       const formattedJob: PrintJob = {
         id: newJob.id || newJob._id,
@@ -164,7 +161,7 @@ const ShopDashboard = () => {
     });
 
     socket.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
+      // Handle disconnect
     });
 
     return () => {
@@ -212,7 +209,6 @@ const ShopDashboard = () => {
         }
         
         const data = await response.json();
-        console.log('Initial jobs for today:', data);
         
         // Transform the data to match our PrintJob interface
         const formattedJobs: PrintJob[] = data.map((job: any) => ({
@@ -237,7 +233,6 @@ const ShopDashboard = () => {
         
         setPrintJobs(formattedJobs);
       } catch (error) {
-        console.error('Error fetching print jobs:', error);
         toast.error('Failed to fetch print jobs');
       } finally {
         setIsLoading(false);
