@@ -2,7 +2,7 @@
 // export const BASE_FRONTEND_URL = 'http://localhost:5173';
 // export const BASE_URL = 'http://localhost:5000';
 // For production:
-export const BASE_FRONTEND_URL = 'https://printflow.vercel.app';
+export const BASE_FRONTEND_URL = 'https://backend-production-f7ab.up.railway.app/';
 export const BASE_URL = 'https://backend-production-f7ab.up.railway.app/';
 
 // API Endpoints
